@@ -1,8 +1,14 @@
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Edge } from './edge.entity';
+import { Channel, Message } from 'amqplib';
 
 @Controller()
 export class EdgeController {
@@ -13,45 +19,32 @@ export class EdgeController {
 
   @MessagePattern('edge_created')
   public async handleEdgeCreated(
-    @Payload() payload: unknown, // Use unknown to ensure type safety
+    @Payload() data: Edge,
+    @Ctx() context: RmqContext,
   ) {
+    const channel = context.getChannelRef() as Channel;
+    const originalMsg = context.getMessage() as Message;
+
     try {
-      // Type guard to ensure payload is a valid Edge
-      const isEdge = (data: unknown): data is Edge => {
-        return (
-          data !== null &&
-          typeof data === 'object' &&
-          'id' in data &&
-          'node1_alias' in data &&
-          'node2_alias' in data &&
-          'capacity' in data
-        );
-      };
-
-      if (!isEdge(payload)) {
-        throw new Error('Invalid edge data received');
-      }
-
       console.log(
-        `New channel between ${payload.node1_alias} and ${payload.node2_alias} with a capacity of ${payload.capacity} has been created.`,
+        `New channel between ${data.node1_alias} and ${data.node2_alias} with a capacity of ${data.capacity} has been created.`,
       );
 
-      const edge = await this.edgeRepository.findOneBy({ id: payload.id });
+      const edge = await this.edgeRepository.findOneBy({ id: data.id });
 
       if (edge) {
-        // Create a new object with updated values to ensure type safety
-        const updatedEdge = {
-          ...edge,
-          node1_alias: `${edge.node1_alias}-updated`,
-          node2_alias: `${edge.node2_alias}-updated`,
-        };
-        await this.edgeRepository.save(updatedEdge);
-      }
+        edge.node1_alias = `${edge.node1_alias}-updated`;
+        edge.node2_alias = `${edge.node2_alias}-updated`;
 
-      // Acknowledge the message was processed successfully
+        await this.edgeRepository.save(edge);
+        console.log(`Successfully updated edge: ${edge.id}`);
+      } else {
+        console.warn(`Edge not found for update: ${data.id}`);
+      }
+      channel.ack(originalMsg);
     } catch (error) {
       console.error('Failed to process message', error);
-      // In a real app, you might requeue the message or move it to a dead-letter queue
+      channel.nack(originalMsg, false, false);
     }
   }
 }

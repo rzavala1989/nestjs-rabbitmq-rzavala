@@ -33,6 +33,7 @@ import { EdgeModule } from './edge/edge.module';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       playground: true,
+      introspection: true,
     }),
     EdgeModule,
   ],
