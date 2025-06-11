@@ -2,6 +2,7 @@ import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { EdgeService } from './edge.service';
 import { EdgeObject } from './graphql/edge.model';
 import { Edge } from './edge.entity';
+import { CreateEdgeInput } from './dto/create-edge.input';
 
 /**
  * GQL resolver for the Edge entity.
@@ -40,36 +41,18 @@ export class EdgeResolver {
 
   /**
    * create a new edge
-   * @param node1_alias The alias for the first node.
-   * @param node2_alias The alias for the second node.
+   * @param createEdgeInput The DTO containing the arguments.
    * @returns The newly created EdgeObject.
    */
   @Mutation(() => EdgeObject, { name: 'createEdge' })
   async createEdge(
-    @Args('node1_alias') node1_alias: string,
-    @Args('node2_alias') node2_alias: string,
+    // Use the DTO as the single source for arguments
+    @Args('createEdgeInput') createEdgeInput: CreateEdgeInput,
   ): Promise<EdgeObject> {
-    const newEdge = await this.edgeService.create(node1_alias, node2_alias);
-    // Convert the new database entity to a GraphQL object
+    // Pass the whole object to the service
+    const newEdge = await this.edgeService.create(createEdgeInput);
     return this.toEdgeObject(newEdge);
   }
-
-  // /**
-  //  * @param updateEdgeInput The input containing the edge ID and fields to update.
-  //  * @returns The updated EdgeObject or null if the edge was not found.
-  //  */
-  // @Mutation(() => EdgeObject, { name: 'updateEdge', nullable: true })
-  // async updateEdge(
-  //   @Args('updateEdgeInput') updateEdgeInput: UpdateEdgeInput,
-  // ): Promise<EdgeObject | null> {
-  //   const { id, ...updateData } = updateEdgeInput;
-  //   const updatedEdge = await this.edgeService.update(id, updateData);
-  //
-  //   if (!updatedEdge) {
-  //     return null;
-  //   }
-  //   return this.toEdgeObject(updatedEdge);
-  // }
 
   /**
    * A private helper method to map a database Edge entity

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Edge } from './edge.entity';
 import { ClientProxy } from '@nestjs/microservices';
 import { v4 as uuidv4 } from 'uuid';
+import { CreateEdgeInput } from './dto/create-edge.input';
 
 @Injectable()
 export class EdgeService {
@@ -21,11 +22,17 @@ export class EdgeService {
     return this.edgeRepository.findOneBy({ id });
   }
 
-  async create(node1_alias: string, node2_alias: string): Promise<Edge> {
+  /**
+   * @param createEdgeInput The DTO containing the new edge data.
+   * @returns The saved Edge entity.
+   */
+  async create(createEdgeInput: CreateEdgeInput): Promise<Edge> {
+    const { node1_alias, node2_alias } = createEdgeInput;
+
     const newEdge = this.edgeRepository.create({
       id: uuidv4(),
-      node1_alias,
-      node2_alias,
+      node1_alias, // Use the destructured variable
+      node2_alias, // Use the destructured variable
       capacity: Math.floor(Math.random() * (1000000 - 10000 + 1)) + 10000,
     });
 
@@ -35,21 +42,4 @@ export class EdgeService {
 
     return savedEdge;
   }
-
-  // async update(id: string, updateData: Partial<Edge>): Promise<Edge | null> {
-  //   const edge = await this.findOne(id);
-  //   if (!edge) {
-  //     return null;
-  //   }
-  //
-  //   // Update only the provided fields
-  //   Object.assign(edge, updateData);
-  //
-  //   const updatedEdge = await this.edgeRepository.save(edge);
-  //
-  //   // Emit an event for the update
-  //   this.client.emit('edge_updated', updatedEdge);
-  //
-  //   return updatedEdge;
-  // }
 }
